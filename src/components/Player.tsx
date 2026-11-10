@@ -178,23 +178,33 @@ export default function Player({
   };
 
   const pct = duration > 0 ? (seek.time / duration) * 100 : 0;
-  const openInFilebox = () => {
-    if (!src) return;
-    window.location.href = `filebox://play?url=${encodeURIComponent(src)}`;
-  };
+  // 通过真实 <a href> 触发自定义 URL Scheme，保留 iOS 用户点击手势。
+  const fileboxHref = src ? `filebox://play?url=${encodeURIComponent(src)}` : undefined;
 
   return (
     <div ref={wrapRef} className={`relative bg-black overflow-hidden group ${className}`}>
-      <button
-        type="button"
-        onClick={openInFilebox}
+      <a
+        href={fileboxHref}
         aria-label="使用 Filebox 播放"
         title="使用 Filebox 播放"
-        className="absolute right-3 top-3 z-40 rounded-full px-3 py-2 text-xs font-semibold text-white"
-        style={{ background: "rgba(0,0,0,.68)", border: "1px solid rgba(255,255,255,.24)", backdropFilter: "blur(10px)" }}
+        onClick={(e) => { if (!fileboxHref) e.preventDefault(); e.stopPropagation(); }}
+        className="absolute right-3 z-[60] rounded-full px-3 py-2.5 text-xs font-semibold text-white select-none"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
+          background: "rgba(0,0,0,.82)",
+          border: "1px solid rgba(255,255,255,.35)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          touchAction: "manipulation",
+          pointerEvents: "auto",
+          minHeight: 44,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         ↗ Filebox 播放
-      </button>
+      </a>
       <div className="absolute inset-0" inert={controlsLocked}>
       <video
         ref={videoRef}

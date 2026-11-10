@@ -317,25 +317,34 @@ const VideoSurface = forwardRef<VideoHandle, Props>(function VideoSurface(
 
   const hasTransform = scale !== 1 || panX !== 0 || panY !== 0;
 
-  const openInFilebox = () => {
-    if (!src) return;
-    const target = `filebox://play?url=${encodeURIComponent(src)}`;
-    // 必须使用原始 src（而不是 video.currentSrc/blob: 或本地 hg:// 代理地址）。
-    window.location.href = target;
-  };
+  // 使用原始播放地址；通过真实 <a href> 触发自定义 URL Scheme，
+  // iOS WKWebView 对用户点击的链接通常比脚本改写 location 更容易识别。
+  const fileboxHref = src ? `filebox://play?url=${encodeURIComponent(src)}` : undefined;
 
   return (
     <div className={`relative w-full h-full bg-black overflow-hidden ${className}`}>
-      <button
-        type="button"
-        onClick={openInFilebox}
+      <a
+        href={fileboxHref}
         aria-label="使用 Filebox 播放"
         title="使用 Filebox 播放"
-        className="absolute right-3 top-3 z-40 rounded-full px-3 py-2 text-xs font-semibold text-white"
-        style={{ background: "rgba(0,0,0,.68)", border: "1px solid rgba(255,255,255,.24)", backdropFilter: "blur(10px)" }}
+        onClick={(e) => { if (!fileboxHref) e.preventDefault(); e.stopPropagation(); }}
+        className="absolute right-3 z-[60] rounded-full px-3 py-2.5 text-xs font-semibold text-white select-none"
+        style={{
+          bottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)",
+          background: "rgba(0,0,0,.82)",
+          border: "1px solid rgba(255,255,255,.35)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          touchAction: "manipulation",
+          pointerEvents: "auto",
+          minHeight: 44,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         ↗ Filebox 播放
-      </button>
+      </a>
       {!ready && poster && (
         <img
           src={poster}
