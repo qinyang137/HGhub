@@ -1,0 +1,94 @@
+
+name: Build HGhub TrollStore IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "src-tauri/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/build-trollstore.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build-ios:
+    name: Build Unsigned iOS IPA
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Setup CocoaPods
+        run: |
+          if ! command -v pod >/dev/null 2>&1; then
+            brew install cocoapods
+          fi
+          pod --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Initialize iOS project
+        run: |
+          pnpm dlx @tauri-apps/cli@2.12.4 ios init --ci
+
+      - name: Build unsigned TrollStore IPA
+        run: |
+          pnpm dlx @tauri-apps/cli@2.12.4 ios build \
+            --no-sign \
+            --ci \
+            --features custom-protocol
+
+      - name: Prepare IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IPA=$(find src-tauri/gen/apple/build \
+            -type f -name "*.ipa" | head -n 1)
+
+          if [ -z "$IPA" ]; then
+            echo "ERROR: IPA not found"
+            find src-tauri/gen/apple/build -maxdepth 5 -print
+            exit 1
+          fi
+
+          cp "$IPA" HGhub-TrollStore.ipa
+
+          echo "IPA successfully generated:"
+          ls -lh HGhub-TrollStore.ipa
+
+          unzip -l HGhub-TrollStore.ipa | head -30
+
+      - name: Upload TrollStore IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: HGhub-TrollStore-IPA
+          path: HGhub-TrollStore.ipa
+          if-no-files-found: error
+          retention-days: 30
